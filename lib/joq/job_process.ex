@@ -1,4 +1,6 @@
 defmodule Joq.JobProcess do
+  require Logger
+
   defmodule CrashError do
     @moduledoc """
       Represents a process crash. Ensures we always return an error struct,
@@ -11,10 +13,13 @@ defmodule Joq.JobProcess do
   end
 
   def run(job) do
+    Logger.debug("Running job #{job.id}")
     case run_job(job) do
       :ok ->
+        Logger.debug("Job #{job.id} successfully run")
         {:success, job}
       {error, stack} ->
+        # No logging here. These errors will be reported at a later stage
         {:fail, job, error, stack}
     end
   end

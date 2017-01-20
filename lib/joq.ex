@@ -6,10 +6,11 @@ defmodule Joq do
   alias Joq.Retry
 
   @doc """
-  Enqueue job to be run in the background as soon as possible
+  Enqueue job to be run in the background
   """
   def enqueue(worker, args \\ [], options \\ []) do
-    Job.make(UUID.uuid1(), worker, args, options)
+    id = :crypto.hash(:md5, UUID.uuid1) |> Base.encode32 |> String.slice(0, 8)
+    Job.make(id, worker, args, options)
     |> JobRunner.register_job
   end
 

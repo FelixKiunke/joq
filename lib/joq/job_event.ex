@@ -45,6 +45,10 @@ defmodule Joq.JobEvent do
     notify {:finished, job}
   end
 
+  def dropped(job) do
+    notify {:dropped, job}
+  end
+
   def failed(job) do
     notify {:failed, job}
   end

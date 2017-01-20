@@ -1,5 +1,6 @@
 defmodule Joq.TestWorker do
-  use Joq.Worker, max_concurrent: 2
+  use Joq.Worker, max_concurrent: 1, retry: [delay: 500, exponent: 2, max_attempts: 3],
+    duplicates: :drop
 
   # Usage: Joq.enqueue(Joq.TestWorker, :fail)
   #
@@ -12,6 +13,7 @@ defmodule Joq.TestWorker do
 
   def perform(:fail_once) do
     unless Application.get_env(:Joq, :fail_once) do
+      IO.inspect "failing once"
       Application.put_env(:Joq, :fail_once, true)
       raise "failing once"
     end

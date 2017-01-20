@@ -5,19 +5,23 @@ defmodule Joq.JobRunner do
   alias Joq.JobQueue
   alias Joq.JobEvent
   alias Joq.Retry
+  import Joq.Timing
 
   def start_link do
     GenServer.start_link(__MODULE__, [], name: __MODULE__)
   end
 
   def register_job(job) do
+    Logger.debug("Enqueued job #{job.id}: #{inspect job.worker}.perform" <>
+                 "(#{inspect job.args})" <> (if job.delay_until, do:
+                   " (delayed for #{job.delay_until - now}ms)", else: ""))
     GenServer.cast(__MODULE__, {:register_job, job})
   end
 
   def handle_cast({:register_job, job}, state) do
     spawn_link fn ->
       job
-      |> run_job
+      |> JobQueue.run
       |> retry_failed
       |> process_result
     end
@@ -25,10 +29,9 @@ defmodule Joq.JobRunner do
     {:noreply, state}
   end
 
-  defp run_job(job), do: JobQueue.run(job)
-
   defp retry_failed(status), do: retry_failed(status, 1)
   defp retry_failed({:success, job}, _attempt), do: {:success, job}
+  defp retry_failed({:dropped, job}, _attempt), do: {:dropped, job}
   defp retry_failed({:fail, job, error, stack}, attempt) do
     retry_config =
       Application.get_env(:joq, :retry)
@@ -37,9 +40,11 @@ defmodule Joq.JobRunner do
       |> Retry.override(job.retry)
 
     if Retry.retry?(retry_config, attempt) do
-      :timer.sleep Retry.retry_delay(retry_config, attempt)
+      delay = Retry.retry_delay(retry_config, attempt)
+      Logger.warn("Job #{job.id} failed, will retry in #{delay}ms")
 
-      run_job(job)
+      job
+      |> JobQueue.run(delay)
       |> retry_failed(attempt + 1)
     else
       {:fail, job, error, stack}
@@ -50,6 +55,11 @@ defmodule Joq.JobRunner do
     JobEvent.finished(job)
   end
 
+  defp process_result({:dropped, job}) do
+    Logger.debug("Job #{job.id} dropped as a duplicate")
+    JobEvent.dropped(job)
+  end
+
   defp process_result({:fail, job, error, stack}) do
     log_error(job, error, stack)
     JobEvent.failed(job)
@@ -57,9 +67,9 @@ defmodule Joq.JobRunner do
 
   defp log_error(job, error, stack) do
     stacktrace = Exception.format_stacktrace(stack)
-    job_details = "##{job.id}: #{inspect(job.worker)}.perform(#{inspect(job.args)})"
+    job_details = "#{job.id}: #{inspect(job.worker)}.perform(#{inspect(job.args)})"
 
-    "Job #{job_details} failed with error: #{inspect(error)}\n\n#{stacktrace}"
+    "Job #{job_details} failed with error: #{inspect(error)}\n#{stacktrace}"
     |> String.trim
     |> Logger.error
   end
