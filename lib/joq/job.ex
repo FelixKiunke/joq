@@ -1,9 +1,39 @@
 defmodule Joq.Job do
-  defstruct [:id, :worker, :args, :retry, :delay_until]
+  @moduledoc """
+  Internal representation of a job instance.
 
-  alias Joq.Retry
+  `delay_until` is a monotonic timestamp, see `Joq.Timing`.
+  """
+
   import Joq.Timing
 
+  alias Joq.Retry
+
+  defstruct [:id, :worker, :args, :retry, :delay_until]
+
+  @type t :: %__MODULE__{
+    id: String.t,
+    worker: atom,
+    args: term,
+    retry: Retry.t,
+    delay_until: integer
+  }
+
+  @doc """
+  Create a job. Used internally in `Joq.enqueue/3`.
+
+  Valid options are `retry` and `delay_for`. See `Joq.Retry` for retry configs.
+  `delay_for` is the amount of milliseconds to wait before executing the job.
+
+  ## Examples
+      # Create a job with an id of "foo" that will be run as
+      # MyWorker.perform(param: 1) and will not be retried on errors
+      Job.make("foo", MyWorker, [param: 1], retry: :no_retry)
+
+      # Create a job that will be run as MyWorker.perform(:param) in 3 seconds
+      Job.make("foo", MyWorker, :param, delay_for: 3_000)
+  """
+  @spec make(String.t, atom, term, keyword) :: t
   def make(id, worker, args, options \\ []) do
     # Throw errors for invalid configs
     Retry.make_config(options[:retry])
@@ -15,8 +45,12 @@ defmodule Joq.Job do
   end
 
   @doc """
-  Returns true for jobs that have the same worker and arguments
+  Returns true for jobs that have the same worker and arguments.
+
+  These jobs are considered duplicates and will be ignored if
+  `duplicates: :drop` is set (see `Joq.Worker` for more info)
   """
+  @spec is_equal(t, t) :: boolean
   def is_equal(a, b) do
     a.worker == b.worker and a.args == b.args
   end
