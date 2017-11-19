@@ -2,7 +2,7 @@ defmodule Joq.Job do
   @moduledoc """
   Internal representation of a job instance.
 
-  `delay_until` is a monotonic timestamp, see `Joq.Timing`.
+  See [below](#t:t/0) for the format of Job structs.
   """
 
   import Joq.Timing
@@ -11,12 +11,24 @@ defmodule Joq.Job do
 
   defstruct [:id, :worker, :args, :retry, :delay_until]
 
+  @typedoc """
+  The type of a Job struct.
+
+  Job structs contain the following fields:
+
+    * `:id` - an identifier string that is unique for each job
+    * `:worker` - the worker module (see `Joq.Worker` for more info)
+    * `:args` - the arguments the worker function will be called with
+    * `:retry` - an optional retry configuration (see `Joq.Retry` for more info)
+    * `:delay_until` - an optional timestamp when the job should be run. This is
+      an Erlang monotonic timestamp (see `Joq.Timing`)
+  """
   @type t :: %__MODULE__{
     id: String.t,
     worker: atom,
     args: term,
-    retry: Retry.t,
-    delay_until: integer
+    retry: Retry.t | nil,
+    delay_until: integer | nil
   }
 
   @doc """
@@ -38,7 +50,7 @@ defmodule Joq.Job do
     # Throw errors for invalid configs
     Retry.make_config(options[:retry])
 
-    delay_until = options[:delay_for] && now + options[:delay_for]
+    delay_until = options[:delay_for] && now() + options[:delay_for]
 
     %__MODULE__{id: id, worker: worker, args: args, retry: options[:retry],
                 delay_until: delay_until}

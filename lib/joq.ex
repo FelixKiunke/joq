@@ -19,9 +19,9 @@ defmodule Joq do
 
   Example:
 
-    params
-    |> extract_data
-    |> Joq.enqueue_to(SendEmailWorker)
+      params
+      |> extract_data
+      |> Joq.enqueue_to(SendEmailWorker)
   """
   def enqueue_to(args, worker, options \\ []) do
     enqueue(worker, args, options)

@@ -21,7 +21,7 @@ defmodule Joq.Worker do
     quote do
       # Perform without arguments when called with an empty argument list
       def perform([]) do
-        perform
+        perform()
       end
 
       def max_concurrent do

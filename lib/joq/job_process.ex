@@ -25,13 +25,13 @@ defmodule Joq.JobProcess do
   end
 
   defp run_job(job) do
-    parent = self
+    parent = self()
 
     spawn_monitor fn ->
       send parent, run_job_and_capture_result(job)
     end
 
-    wait_for_result
+    wait_for_result()
   end
 
   defp run_job_and_capture_result(job) do
@@ -48,10 +48,10 @@ defmodule Joq.JobProcess do
     receive do
       {:DOWN, _ref, :process, _pid, :normal} ->
         # both errors and successes result in a normal exit, wait for more information
-        wait_for_result
+        wait_for_result()
       {:DOWN, _ref, :process, _pid, error} -> # Failed beause the process crashed
         crash_error =
-          CrashError.exception("The job runner crashed. Reason: #{error}")
+          CrashError.exception("The job runner crashed. Reason: #{inspect error}")
 
         {crash_error, []}
       {:error, error, stack} ->

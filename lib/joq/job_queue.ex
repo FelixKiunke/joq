@@ -25,7 +25,7 @@ defmodule Joq.JobQueue do
       # No need to enter into the queue
       run_job(job)
     else
-      request_run(job, delay && now + delay)
+      request_run(job, delay && now() + delay)
 
       receive do
         {:run, job} ->
@@ -46,7 +46,7 @@ defmodule Joq.JobQueue do
     {:reply, state, state}
 
   defp request_run(job, delay_until, caller \\ nil) do
-    GenServer.cast(__MODULE__, {:request_run, job, delay_until, caller || self})
+    GenServer.cast(__MODULE__, {:request_run, job, delay_until, caller || self()})
   end
 
   defp confirm_run(job) do
@@ -60,7 +60,7 @@ defmodule Joq.JobQueue do
         drop_dupes?(job) and dupe_running?(state, job) ->
           send caller, :drop
           state
-        run_at && run_at > now ->
+        run_at && run_at > now() ->
           run_delayed(state, {job, caller}, run_at)
         can_run?(state, job) ->
           run_now(state, {job, caller})
@@ -80,7 +80,7 @@ defmodule Joq.JobQueue do
   end
 
   def handle_info(:run_delayed, {worker_states, delay_queue}) do
-    ts = now
+    ts = now()
     {run_now, run_later} =
       delay_queue
       |> Enum.partition(fn {run_at, _, _} -> run_at <= ts end)
@@ -99,7 +99,7 @@ defmodule Joq.JobQueue do
     # being dropped, too many :run_delayed messages may be sent. This is not a
     # problem as these messages will be ignored if there are no jobs to be run
     # at the point that a message is sent
-    Process.send_after(__MODULE__, :run_delayed, max(run_at - now, 0))
+    Process.send_after(__MODULE__, :run_delayed, max(run_at - now(), 0))
 
     new_queue =
       if drop_dupes?(job) do
@@ -184,7 +184,7 @@ defmodule Joq.JobQueue do
           end
         end)
 
-      {worker_states, delay_queue}
+      {worker_states, new_queue}
     else
       state
     end

@@ -14,7 +14,7 @@ defmodule Joq.JobRunner do
   def register_job(job) do
     Logger.debug("Enqueued job #{job.id}: #{inspect job.worker}.perform" <>
                  "(#{inspect job.args})" <> (if job.delay_until, do:
-                   " (delayed for #{job.delay_until - now}ms)", else: ""))
+                   " (delayed for #{job.delay_until - now()}ms)", else: ""))
     GenServer.cast(__MODULE__, {:register_job, job})
   end
 

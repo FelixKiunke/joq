@@ -3,13 +3,13 @@ defmodule Joq.Mixfile do
 
   def project do
     [app: :joq,
-     version: "0.2.0",
+     version: "0.2.1",
      elixir: "~> 1.0",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
-     description: description,
-     package: package,
-     deps: deps]
+     description: description(),
+     package: package(),
+     deps: deps()]
   end
 
   # Configuration for the OTP application
@@ -32,8 +32,7 @@ defmodule Joq.Mixfile do
   defp deps do
     [
       {:uuid, "~> 1.0"},
-      {:ex_doc, ">= 0.0.0", only: :dev},
-      {:retry, "~> 0.5.0", only: :test}
+      {:ex_doc, ">= 0.0.0", only: :dev}
     ]
   end
 
